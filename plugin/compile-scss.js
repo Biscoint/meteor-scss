@@ -165,6 +165,23 @@ class SassCompiler extends MultiFileCachingCompiler {
         importPath = importPath.substr(accPosition,importPath.length);
       }
 
+      // if (!importPath.startsWith('{') && importPath.indexOf('{') < 0) {
+      if (!importPath.startsWith('{')) {
+        if (importPath.startsWith('node_modules')) {
+          importPath = '{}/' + importPath;
+        } else {
+          let dir = path.dirname(prev).replace(inputFile.getSourceRoot(), '');
+
+          if (prev.indexOf('{') < 0) {
+            dir = '{}' + dir;
+          } else {
+            dir = dir.slice(1, dir.length);
+          }
+
+          importPath = path.join(dir, importPath);
+        }
+      }
+
       try {
         let parsed = getRealImportPath(importPath);
 
@@ -176,13 +193,21 @@ class SassCompiler extends MultiFileCachingCompiler {
           throw new Error(`File to import: ${url} not found in file: ${totalImportPath[totalImportPath.length - 2]}`);
         }
 
+        let fn = parsed.path;
+        if (parsed.path.startsWith('{')) {
+          fn = path.join(inputFile.getSourceRoot(), parsed.path.slice(2));
+        }
+        console.log(decodeFilePath(parsed.path));
+
         if (parsed.absolute) {
           sourceMapPaths.push(parsed.path);
-          done({ contents: fs.readFileSync(parsed.path, 'utf8')});
+          // done({ contents: fs.readFileSync(parsed.path, 'utf8')});
+          done({ file: fn });
         } else {
           referencedImportPaths.push(parsed.path);
           sourceMapPaths.push(decodeFilePath(parsed.path));
-          done({ contents: allFiles.get(parsed.path).getContentsAsString()});
+          // done({ contents: allFiles.get(parsed.path).getContentsAsString()});
+          done({ file: fn });
         }
       } catch (e) {
         return done(e);
